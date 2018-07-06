@@ -26,7 +26,7 @@ def printHelp(exit=False, which='main'):
 			'\tUsage: outbreaker.py <run_type>\n\n'+
 			'Run Types:\n'+
 			'\tlatest\t\tGet latest outbreak reports.\n'+
-			'\tarchive\t\tFind reports for a given year.\n'+
+			'\tarchive\t\tFind reports for a given year/country/disease.\n'+
 			'\tdownload\tDownload a specific article.\n')
 	elif which == 'archive':
 		print('Usage: outbreaker archive <year/country/disease>')
