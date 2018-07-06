@@ -20,16 +20,35 @@ def importBase():
 	import pandas as pd
 	from bs4 import BeautifulSoup
 
-def printHelp(exit=False):
-	print('Outbreaker: An Unofficial WHO Disease Outbreak News API\n'+
-		'\tUsage: outbreaker.py <run_type>\n'+
-		'\n'+
-		'Run Types:\n'+
-		'\tlatest\t\tGet latest outbreak reports.\n'+
-		'\tarchive\t\tFind reports for a given year.\n'+
-		'\tdownload\tDownload a specific article.\n')
+def printHelp(exit=False, which='main'):
+	if which == 'main':
+		print('Outbreaker: An Unofficial WHO Disease Outbreak News API\n'+
+			'\tUsage: outbreaker.py <run_type>\n\n'+
+			'Run Types:\n'+
+			'\tlatest\t\tGet latest outbreak reports.\n'+
+			'\tarchive\t\tFind reports for a given year.\n'+
+			'\tdownload\tDownload a specific article.\n')
+	elif which == 'archive':
+		print('Usage: outbreaker archive <year/country/disease>')
+	elif which == 'archive-year':
+		print('Usage: outbreaker archive year <year>\n'+
+			'  (Nb. No records exist prior to 1996.)')
+	elif which == 'archive-disease':
+		print('Usage: outbreaker.py archive disease <disease>\n\n'+
+			'Possible Diseases:\n'+
+			'\n'.join(sorted(diseaseDict().keys())))
+	elif which == 'archive-country':
+		print('Usage: outbreaker archive country <country>\n\n'+
+			'Possible Countries:\n'+
+			'\n'.join(sorted(countryDict().keys())))
+	else:
+		error("Help type {} not recognised.".format(which))
+		sys.exit()
 	if exit:
 		sys.exit()
+
+def info(message):
+	print('\033[92m{}\033[0m'.format(message))
 
 def warn(message):
 	print('\033[93mWarning: {}\033[0m'.format(message))
@@ -37,59 +56,127 @@ def warn(message):
 def error(message):
 	print('\033[91mError: {}\033[0m'.format(message))
 
+def binary_query(query, default=False):
+    if default:
+        reply = input(query+' (Y/n): ')
+    elif not default:
+        reply = input(query+' (y/N): ')
+    else:
+        raise ValueError('Inappropriate default value passed to binary_query.')
+
+    if reply.lower() in ['yes', 'y', 'true', 't']:
+        return True
+    elif reply.lower() in ['no', 'n', 'false', 'f']:
+        return False
+    else:
+        return default
+
 def getLatest():
 	soup = BeautifulSoup(requests.get(latestURL).content, "lxml")
 
+	subset_links = []
+	reports = soup.find_all('ul', class_='auto_archive')
+	if len(reports) < 1:
+		error("No recent reports found.".format(**locals()))
+		sys.exit()
 	print(titleFormat.format('Latest Disease Outbreaks (Source: WHO)'))
-	for report in soup.find_all('ul', class_='auto_archive')[0].find_all('li'):
+	for report in reports[0].find_all('li'):
+		subset_links.append(coreURL+report.find_all('a',href=True)[0].get('href'))
 		print(outformat.format(report.span.text, report.a.text, coreURL+report.find_all('a',href=True)[0].get('href')))
 
-def getArchive(year=2018):
-	import datetime
-	currentYear = datetime.datetime.now().year
-	if int(year) not in range(1996,currentYear+1):
-		print("No reports available for year '{0}'.".format(year))
-	archiveURL = '{coreURL}/csr/don/archive/year/{0}/{language}/'.format(year, **globals())
+	if binary_query('Download these reports?'):
+		for url in subset_links:
+			downloadReport(url)
+
+def getArchive(searchTerm=2018, recordType='year', coreURL=coreURL, language=language):
+	if recordType.lower() == 'year':
+		import datetime
+		currentYear = datetime.datetime.now().year
+		if int(searchTerm) not in range(1996,currentYear+1):
+			error("No reports available for the year '{0}'.".format(searchTerm))
+			sys.exit()
+		searchTerm_orig = searchTerm
+	elif recordType.lower() == 'disease':
+		global diseases
+		diseases = diseaseDict()
+		if searchTerm not in diseases.keys():
+			error("Given disease '{}' not found".format(searchTerm))
+			printHelp(which='archive-disease', exit=True)
+		else:
+			searchTerm_orig = searchTerm
+			searchTerm = diseases[searchTerm].split('/')[-2]
+			if ' ' in searchTerm: searchTerm = '_'.join(searchTerm.lower().split(' '))
+	elif recordType.lower() == 'country':
+		global countries
+		countries = countryDict()
+		if searchTerm not in countries.keys():
+			error("Given country '{}' not found".format(searchTerm))
+			printHelp(which='archive-country', exit=True)
+		else:
+			searchTerm_orig = searchTerm
+			searchTerm = countries[searchTerm].split('/')[-2]
+			if ' ' in searchTerm: searchTerm = '_'.join(searchTerm.lower().split(' '))
+
+	archiveURL = '{coreURL}/csr/don/archive/{recordType}/{0}/{language}/'.format(searchTerm, **locals())
 	soup = BeautifulSoup(requests.get(archiveURL).content, "lxml")
 
-	print(titleFormat.format('Archive Outbreaks For {year} (Source: WHO)'.format(**locals())))
-	for report in soup.find_all('ul', class_='auto_archive')[0].find_all('li'):
+	if recordType == 'country': searchTerm = searchTerm_orig
+
+	subset_links = []
+	reports = soup.find_all('ul', class_='auto_archive')
+	if len(reports) < 1:
+		error("No reports found for '{searchTerm_orig}'".format(**locals()))
+		sys.exit()
+	print(titleFormat.format('Archive Outbreaks For {searchTerm_orig} (Source: WHO)'.format(**locals())))
+	for report in reports[0].find_all('li'):
+		subset_links.append(coreURL+report.find_all('a',href=True)[0].get('href'))
 		print(outformat.format(report.a.text, report.span.text, coreURL+report.find_all('a',href=True)[0].get('href')))
 
-# def getDisease(disease=''):
-# 	if disease == '':
-# 		warn('No disease provided.')
-# 	pass
+	if binary_query('Download these reports?'):
+		for url in subset_links:
+			downloadReport(url)
 
 def downloadReport(url):
-	warn("This may fail on some articles!")
 	if coreURL not in url:
 		error("Provided url is not from a recognised domain.")
 		sys.exit()
 	article = BeautifulSoup(requests.get(url).content, 'lxml')
-	copy = article.find_all('div', id='primary')[0]
-	headline = copy.find_all('h1',class_='headline')[0].text
-	dateline = copy.find_all('em',class_='dateline')[0].text.rstrip(' -')
-	text = [x.text for x in copy.find_all('span')]
-	filename = '_'.join(dateline.split(' '))+'_'+'_'.join(headline.split(' '))+'.txt'
+	copy = article.find_all('div', id='primary')[0].text #article.find_all('div', id='primary')[0]
+	#headline = copy.find_all('h1',class_='headline')[0].text
+	# dateline = copy.find_all('em',class_='dateline')[0].text.rstrip(' -')
+	#text = [x.text for x in copy.find_all('span')]
+	filename = url.split('/')[-3]+'.txt' #'_'.join(headline.split(' '))+'.txt' #filename = '_'.join(dateline.split(' '))+'_'+'_'.join(headline.split(' '))+'.txt'
 
 	print('Downloading {0} to {1}'.format(url, filename))
 
 	with open(filename,'w') as f:
-		f.write('Title:'+headline+'\n')
-		f.write('Date:'+dateline+'\n')
-		f.write('Source: {}\n'.format(url))
-		f.write('\n')
-		for line in text:
-			f.write(line+'\n')
-
-# def downloadLatest():
-# 	soup = BeautifulSoup(requests.get(latestURL).content, "lxml")
-# 	downloadReport(latestURL)
+		f.write(copy)
 
 # def alert(checkTime=30):
 # 	# assuming checkTime is minutes, loop to alert for the latest outbreaks.
 # 	pass
+
+def countryDict(countryURL='http://www.who.int/csr/don/archive/country/en/'):
+	if 'countries' not in globals():
+		info('Fetching country list...')
+		import requests
+		from bs4 import BeautifulSoup
+		soup = BeautifulSoup(requests.get(countryURL).content,'lxml')
+		countryDict = {z.text: z.get('href') for z in [x for y in [d.find_all('a', href=True) for d in soup.find_all('ul', class_='a_z')] for x in y]}
+		return(countryDict)
+	else:
+		return(countries)
+
+def diseaseDict(diseaseURL='http://www.who.int/csr/don/archive/disease/en/'):
+	if 'diseases' not in globals():
+		info('Fetching disease list...')
+		import requests
+		from bs4 import BeautifulSoup
+		soup = BeautifulSoup(requests.get(diseaseURL).content,'lxml')
+		diseaseDict = {z.text: z.get('href') for z in [x for y in [d.find_all('a', href=True) for d in soup.find_all('ul', class_='a_z')] for x in y]}
+		return(diseaseDict)
+	else:
+		return(diseases)
 
 #### Parse Arguments
 if len(sys.argv) == 1:
@@ -97,16 +184,20 @@ if len(sys.argv) == 1:
 args = sys.argv[1:]
 
 if args[0] == 'latest':
-	if verbose: print('Finding latest reports...')
+	if verbose: info('Finding latest reports...')
 	importBase()	
 	getLatest()
 elif args[0] == 'archive':
 	if len(args) == 1:
-		warn('No year provided.')
-	else:
-		if verbose: print('Finding archived reports...')
-		importBase()
-		getArchive(year=args[1])
+		warn('No archive type provided.')
+		printHelp(exit=True, which='archive')
+	elif len(args) == 2:
+		warn('No search term provided.')
+		printHelp(exit=True, which='archive-'+args[1].lower())
+	if verbose: info('Fetching archived reports...')
+	importBase()
+	getArchive(searchTerm=args[2], recordType=args[1])
+
 elif args[0] == 'download':
 	if len(args) == 1:
 		warn('No url provided.')
