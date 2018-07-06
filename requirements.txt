@@ -1,0 +1,9 @@
+madeuppkg
+bs4
+sys
+stat
+pandas
+datetime
+requests
+importlib
+subprocess

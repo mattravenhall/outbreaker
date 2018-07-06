@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+import sys
+
+# Base links
+language = 'en'
+coreURL = 'http://www.who.int'
+latestURL = '{coreURL}/csr/don/{language}/'.format(**globals())
+outformat = '\033[92m[{0}]\033[0m: {1:}: \033[90m{2:}\033[0m' # Date - Title - Link
+titleFormat = '\033[1m-{0}-\033[0m'
+
+verbose = True
+
+#### Functions
+def importBase():
+	global requests
+	global pd
+	global BeautifulSoup
+
+	import requests
+	import pandas as pd
+	from bs4 import BeautifulSoup
+
+def printHelp(exit=False):
+	print('Outbreaker: An Unofficial WHO Disease Outbreak News API\n'+
+		'\tUsage: outbreaker.py <run_type>\n'+
+		'\n'+
+		'Run Types:\n'+
+		'\tlatest\t\tGet latest outbreak reports.\n'+
+		'\tarchive\t\tFind reports for a given year.\n'+
+		'\tdownload\tDownload a specific article.\n')
+	if exit:
+		sys.exit()
+
+def warn(message):
+	print('\033[93mWarning: {}\033[0m'.format(message))
+
+def error(message):
+	print('\033[91mError: {}\033[0m'.format(message))
+
+def getLatest():
+	soup = BeautifulSoup(requests.get(latestURL).content, "lxml")
+
+	print(titleFormat.format('Latest Disease Outbreaks (Source: WHO)'))
+	for report in soup.find_all('ul', class_='auto_archive')[0].find_all('li'):
+		print(outformat.format(report.span.text, report.a.text, coreURL+report.find_all('a',href=True)[0].get('href')))
+
+def getArchive(year=2018):
+	import datetime
+	currentYear = datetime.datetime.now().year
+	if int(year) not in range(1996,currentYear+1):
+		print("No reports available for year '{0}'.".format(year))
+	archiveURL = '{coreURL}/csr/don/archive/year/{0}/{language}/'.format(year, **globals())
+	soup = BeautifulSoup(requests.get(archiveURL).content, "lxml")
+
+	print(titleFormat.format('Archive Outbreaks For {year} (Source: WHO)'.format(**locals())))
+	for report in soup.find_all('ul', class_='auto_archive')[0].find_all('li'):
+		print(outformat.format(report.a.text, report.span.text, coreURL+report.find_all('a',href=True)[0].get('href')))
+
+# def getDisease(disease=''):
+# 	if disease == '':
+# 		warn('No disease provided.')
+# 	pass
+
+def downloadReport(url):
+	warn("This may fail on some articles!")
+	if coreURL not in url:
+		error("Provided url is not from a recognised domain.")
+		sys.exit()
+	article = BeautifulSoup(requests.get(url).content, 'lxml')
+	copy = article.find_all('div', id='primary')[0]
+	headline = copy.find_all('h1',class_='headline')[0].text
+	dateline = copy.find_all('em',class_='dateline')[0].text.rstrip(' -')
+	text = [x.text for x in copy.find_all('span')]
+	filename = '_'.join(dateline.split(' '))+'_'+'_'.join(headline.split(' '))+'.txt'
+
+	print('Downloading {0} to {1}'.format(url, filename))
+
+	with open(filename,'w') as f:
+		f.write('Title:'+headline+'\n')
+		f.write('Date:'+dateline+'\n')
+		f.write('Source: {}\n'.format(url))
+		f.write('\n')
+		for line in text:
+			f.write(line+'\n')
+
+# def downloadLatest():
+# 	soup = BeautifulSoup(requests.get(latestURL).content, "lxml")
+# 	downloadReport(latestURL)
+
+# def alert(checkTime=30):
+# 	# assuming checkTime is minutes, loop to alert for the latest outbreaks.
+# 	pass
+
+#### Parse Arguments
+if len(sys.argv) == 1:
+	printHelp(exit=True)
+args = sys.argv[1:]
+
+if args[0] == 'latest':
+	if verbose: print('Finding latest reports...')
+	importBase()	
+	getLatest()
+elif args[0] == 'archive':
+	if len(args) == 1:
+		warn('No year provided.')
+	else:
+		if verbose: print('Finding archived reports...')
+		importBase()
+		getArchive(year=args[1])
+elif args[0] == 'download':
+	if len(args) == 1:
+		warn('No url provided.')
+	else:
+		if verbose: print('Downloading report...')
+		importBase()
+		downloadReport(url=args[1])
+else:
+	print("Argument '{0}' not found.".format(runType))
+	printHelp(exit=True)
