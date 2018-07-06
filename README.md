@@ -2,7 +2,7 @@
 Unofficial API for the WHO Disease Outbreak News
 
 ## Overview
-The World Health Organisation has an awesome resource of disease outbreak reports which I believe is underutilised. To improve the access to this resource, I've developed a small command line package to handle some specific requests.
+The World Health Organisation has an [awesome resource of disease outbreak reports](http://www.who.int/csr/don/en/) which I believe is underutilised. To improve the access to this resource, I've developed a small command line package to handle some specific requests.
 
 Currently users are able to pull down the five most recent reports, request the full archive for a given year (from 1996 onwards), and download specific articles. In the future I plan to extend *Outbreaker*'s capacities to include better data collection (ie. by disease type, better download handling etc.) and outbreak alerts.
 
