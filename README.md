@@ -4,7 +4,7 @@ Unofficial API for the WHO Disease Outbreak News
 ## Overview
 The World Health Organisation has an [awesome resource of disease outbreak reports](http://www.who.int/csr/don/en/) which I believe is underutilised. To improve the access to this resource, I've developed a small command line package to handle some specific requests.
 
-Currently users are able to pull down the five most recent reports, request the full archive for a given year (from 1996 onwards), and download specific articles. In the future I plan to extend *Outbreaker*'s capacities to include better data collection (ie. by disease type, better download handling etc.) and outbreak alerts.
+Currently users are able to pull down the five most recent reports, request the full archive for a given year (from 1996 onwards), country or diseases, and download specific articles. In the future I plan to extend *Outbreaker*'s capacities to include features such as outbreak alerts.
 
 Naturally this package relies on the WHO website's existing layout, if anything breaks please highlight it as an issue on the package's [github repo](https://github.com/mattravenhall/outbreaker).
 
@@ -14,7 +14,7 @@ Naturally this package relies on the WHO website's existing layout, if anything 
 - pandas (v0.19.2)
 
 ### First time set-up
-Prior to first use it's a good idea to run *preflightchecks.py*. This script will check all required packages are installed, and (optionally, but recommended) add outbreaker to your PATH as a system-wide executable.
+Prior to first use it's a good idea to run *preflightchecks.py*. This script will check all required packages are installed, and (optionally, but recommended) add *Outbreaker* to your PATH as a system-wide executable.
 
 ### Running
 If *Outbreaker* was added to your PATH correctly it can be run with the `outbreaker` command, otherwise the script should be called by its direct path. Calling without arguments will return the help information.
