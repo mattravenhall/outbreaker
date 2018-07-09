@@ -1,5 +1,6 @@
 # Outbreaker
 Unofficial API for the WHO Disease Outbreak News
+![Example View](https://raw.githubusercontent.com/mattravenhall/outbreaker/master/example.png)
 
 ## Overview
 The World Health Organisation has an [awesome resource of disease outbreak reports](http://www.who.int/csr/don/en/) which I believe is underutilised. To improve the access to this resource, I've developed a small command line package to handle some specific requests.
