@@ -2,6 +2,7 @@
 import os
 import sys
 import stat
+import platform
 import importlib
 import subprocess
 
@@ -46,8 +47,13 @@ with open("requirements.txt") as f:
 
 # Set up PATH
 if binary_query('Add outbreaker to PATH?'):
-    add2path = subprocess.Popen("cp ~/.bashrc ~/.bashrc.save.preoutbreaker; echo export PATH='\"$PATH:{0}\"' >> ~/.bashrc; chmod +x {0}/outbreaker".format(os.getcwd()), shell=True, stdout=subprocess.PIPE)
-    add2path.wait()
-    os.system('. ~/.bashrc')
+    if platform.system() == 'Darwin':
+        add2path = subprocess.Popen("cp ~/.bash_profile ~/.bash_profile.save.preoutbreaker; echo export PATH='\"$PATH:{0}\"' >> ~/.bash_profile; chmod +x {0}/outbreaker".format(os.getcwd()), shell=True, stdout=subprocess.PIPE)
+        add2path.wait()
+        os.system('. ~/.bash_profile')
+    else:
+        add2path = subprocess.Popen("cp ~/.bashrc ~/.bashrc.save.preoutbreaker; echo export PATH='\"$PATH:{0}\"' >> ~/.bashrc; chmod +x {0}/outbreaker".format(os.getcwd()), shell=True, stdout=subprocess.PIPE)
+        add2path.wait()
+        os.system('. ~/.bashrc')
 
 print('Set up complete.')
