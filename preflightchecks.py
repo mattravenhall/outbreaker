@@ -50,6 +50,6 @@ if binary_query('Add outbreaker to PATH?'):
     else:
         add2path = subprocess.Popen("cp ~/.bashrc ~/.bashrc.save.preoutbreaker; echo '\n# Appended by outbreaker\n'export PATH='\"$PATH:{0}\"' >> ~/.bashrc; chmod +x {0}/outbreaker".format(os.getcwd()), shell=True, stdout=subprocess.PIPE)
         add2path.wait()
-        os.system('source ~/.bashrc')
+        os.system('bash; source ~/.bashrc')
 
 print('Set up complete.')
