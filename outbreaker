@@ -27,7 +27,8 @@ def printHelp(exit=False, which='main'):
 			'Run Types:\n'+
 			'\tlatest\t\tGet latest outbreak reports.\n'+
 			'\tarchive\t\tFind reports for a given year/country/disease.\n'+
-			'\tdownload\tDownload a specific article.')
+			'\tdownload\tDownload a specific article.\n'+
+			'\thelp\t\tDisplay this help page.')
 	elif which == 'archive':
 		print('Usage: outbreaker archive <year/country/disease>')
 	elif which == 'archive-year':
@@ -205,6 +206,8 @@ elif args[0] == 'download':
 		if verbose: print('Downloading report...')
 		importBase()
 		downloadReport(url=args[1])
+elif args[0] == 'help':
+	printHelp(exit=True)
 else:
-	print("Argument '{0}' not found.".format(runType))
+	error("Run Type '{0}' not found.\n".format(args[0]))
 	printHelp(exit=True)
