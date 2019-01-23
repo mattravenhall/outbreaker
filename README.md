@@ -24,3 +24,4 @@ If *Outbreaker* was added to your PATH correctly it can be run with the `outbrea
 - `latest` Return the dates, titles, and urls for the five most recent reports.
 - `archive <year/country/disease>` Return a list of the reports found in the given year, country, or disease.
 - `download <report_url>` Download a given article url as a .txt file (nb. this has not yet been optimised for all articles).
+- `read <report_url>` Print out a given article to the terminal.
