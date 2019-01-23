@@ -5,7 +5,7 @@ import sys
 language = 'en'
 coreURL = 'http://www.who.int'
 latestURL = '{coreURL}/csr/don/{language}/'.format(**globals())
-outformat = '\033[92m[{0}]\033[0m: {1:}: \033[90m{2:}\033[0m' # Date - Title - Link
+outformat = '\033[94m[{0:}] \033[92m[{1}]\033[0m: {2:}: \033[90m{3:}\033[0m' # [Index] [Date]: Title: Link
 titleFormat = '\033[1m-{0}-\033[0m'
 
 verbose = True
@@ -28,6 +28,7 @@ def printHelp(exit=False, which='main'):
 			'\tlatest\t\tGet latest outbreak reports.\n'+
 			'\tarchive\t\tFind reports for a given year/country/disease.\n'+
 			'\tdownload\tDownload a specific article.\n'+
+			'\tread\tDisplay a specific article.\n'+
 			'\thelp\t\tDisplay this help page.')
 	elif which == 'archive':
 		print('Usage: outbreaker archive <year/country/disease>')
@@ -58,19 +59,49 @@ def error(message):
 	print('\033[91mError: {}\033[0m'.format(message))
 
 def binary_query(query, default=False):
-    if default:
-        reply = input(query+' (Y/n): ')
-    elif not default:
-        reply = input(query+' (y/N): ')
-    else:
-        raise ValueError('Inappropriate default value passed to binary_query.')
+	if default:
+		reply = input('{} (Y/n): '.format(query))
+	elif not default:
+		reply = input('{} (y/N): '.format(query))
+	else:
+		raise ValueError('Inappropriate default value passed to binary_query.')
 
-    if reply.lower() in ['yes', 'y', 'true', 't']:
-        return True
-    elif reply.lower() in ['no', 'n', 'false', 'f']:
-        return False
-    else:
-        return default
+	if reply.lower() in ['yes', 'y', 'true', 't']:
+		return True
+	elif reply.lower() in ['no', 'n', 'false', 'f']:
+		return False
+	else:
+		return default
+
+def int_query(query, minVal=None, maxVal=None):
+	if minVal is None: # no floor
+		if isinstance(maxVal, int): # a ceiling
+			reply = input('{} (max {}): '.format(query, maxVal))
+		else: # Max isn't an int, so default to no maxlimit
+			reply = input('{}'.format(query))
+	elif maxVal is None: # no ceiling
+		if instance(minVal, int): # a floor
+			reply = input('{} (min {}): '.format(query, minVal))
+		else: # Min isn't an int, so default to no minlimit
+			reply = input('{}'.format(query))
+	else: # limits
+		reply = input('{} ({}-{}): '.format(query, minVal, maxVal))
+
+	# Check an int was provided
+	try:
+		reply = int(reply)
+		if reply < minVal:
+			error("Provided integer too small.")
+			sys.exit()
+		elif reply > maxVal:
+			error("Provided integer too large.")
+			sys.exit()
+		else:
+			return(reply)		
+	except ValueError:
+		if reply.lower() not in ['n','no','false','f']:
+			error("Expect an integer but received '{}'".format(reply))
+		sys.exit()
 
 def getLatest():
 	soup = BeautifulSoup(requests.get(latestURL).content, "lxml")
@@ -81,13 +112,19 @@ def getLatest():
 		error("No recent reports found.".format(**locals()))
 		sys.exit()
 	print(titleFormat.format('Latest Disease Outbreaks (Source: WHO)'))
+	index = 0
 	for report in reports[0].find_all('li'):
+		index += 1
 		subset_links.append(coreURL+report.find_all('a',href=True)[0].get('href'))
-		print(outformat.format(report.span.text, report.a.text, coreURL+report.find_all('a',href=True)[0].get('href')))
+		print(outformat.format(index, report.span.text, report.a.text, coreURL+report.find_all('a',href=True)[0].get('href')))
 
 	if binary_query('Download these reports?'):
 		for url in subset_links:
-			downloadReport(url)
+			accessReport(url, mode='download')
+
+	articleID = int_query('Read a report?', minVal=1, maxVal=len(subset_links)) - 1
+	if articleID <= len(subset_links):
+		accessReport(subset_links[articleID], mode='read')
 
 def getArchive(searchTerm=2018, recordType='year', coreURL=coreURL, language=language):
 	if recordType.lower() == 'year':
@@ -129,15 +166,21 @@ def getArchive(searchTerm=2018, recordType='year', coreURL=coreURL, language=lan
 		error("No reports found for '{searchTerm_orig}'".format(**locals()))
 		sys.exit()
 	print(titleFormat.format('Archive Outbreaks For {searchTerm_orig} (Source: WHO)'.format(**locals())))
+	index = 0
 	for report in reports[0].find_all('li'):
+		index += 1
 		subset_links.append(coreURL+report.find_all('a',href=True)[0].get('href'))
-		print(outformat.format(report.a.text, report.span.text, coreURL+report.find_all('a',href=True)[0].get('href')))
+		print(outformat.format(index, report.a.text, report.span.text, coreURL+report.find_all('a',href=True)[0].get('href')))
 
 	if binary_query('Download these reports?'):
 		for url in subset_links:
-			downloadReport(url)
+			accessReport(url, model='download')
 
-def downloadReport(url):
+	articleID = int_query('Read a report?', minVal=1, maxVal=len(subset_links)) - 1
+	if articleID <= len(subset_links):
+		accessReport(subset_links[articleID], mode='read')
+
+def accessReport(url, mode, incImages=True):
 	if coreURL not in url:
 		error("Provided url is not from a recognised domain.")
 		sys.exit()
@@ -146,12 +189,18 @@ def downloadReport(url):
 	#headline = copy.find_all('h1',class_='headline')[0].text
 	# dateline = copy.find_all('em',class_='dateline')[0].text.rstrip(' -')
 	#text = [x.text for x in copy.find_all('span')]
-	filename = url.split('/')[-3]+'.txt' #'_'.join(headline.split(' '))+'.txt' #filename = '_'.join(dateline.split(' '))+'_'+'_'.join(headline.split(' '))+'.txt'
+	import re
+	copy = re.sub(r'(\n\n)+', r'\n', copy)
 
-	print('Downloading {0} to {1}'.format(url, filename))
-
-	with open(filename,'w') as f:
-		f.write(copy)
+	if mode.lower() == 'download':
+		filename = url.split('/')[-3]+'.txt' #'_'.join(headline.split(' '))+'.txt' #filename = '_'.join(dateline.split(' '))+'_'+'_'.join(headline.split(' '))+'.txt'
+		print('Downloading {0} to {1}'.format(url, filename))
+		with open(filename,'w') as f:
+			f.write(copy)
+	elif mode.lower() == 'read':
+		print(copy)
+	else:
+		error("Report mode '{}' not recognised.".format(mode))
 
 # def alert(checkTime=30):
 # 	# assuming checkTime is minutes, loop to alert for the latest outbreaks.
@@ -198,14 +247,20 @@ elif args[0] == 'archive':
 	if verbose: info('Fetching archived reports...')
 	importBase()
 	getArchive(searchTerm=args[2], recordType=args[1])
-
 elif args[0] == 'download':
 	if len(args) == 1:
 		warn('No url provided.')
 	else:
 		if verbose: print('Downloading report...')
 		importBase()
-		downloadReport(url=args[1])
+		accessReport(url=args[1], mode='download')
+elif args[0] == 'read':
+	if len(args) == 1:
+		warn('No url provided.')
+	else:
+		if verbose: print('Opening report...')
+		importBase()
+		accessReport(url=args[1], mode='read')
 elif args[0] == 'help':
 	printHelp(exit=True)
 else:
