@@ -28,7 +28,7 @@ def printHelp(exit=False, which='main'):
 			'\tlatest\t\tGet latest outbreak reports.\n'+
 			'\tarchive\t\tFind reports for a given year/country/disease.\n'+
 			'\tdownload\tDownload a specific article.\n'+
-			'\tread\tDisplay a specific article.\n'+
+			'\tread\t\tDisplay a specific article.\n'+
 			'\thelp\t\tDisplay this help page.')
 	elif which == 'archive':
 		print('Usage: outbreaker archive <year/country/disease>')
