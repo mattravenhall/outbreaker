@@ -99,7 +99,7 @@ def int_query(query, minVal=None, maxVal=None):
 		else:
 			return(reply)		
 	except ValueError:
-		if reply.lower() not in ['n','no','false','f']:
+		if reply.lower() not in ['n','no','false','f','']:
 			error("Expect an integer but received '{}'".format(reply))
 		sys.exit()
 
@@ -174,13 +174,13 @@ def getArchive(searchTerm=2018, recordType='year', coreURL=coreURL, language=lan
 
 	if binary_query('Download these reports?'):
 		for url in subset_links:
-			accessReport(url, model='download')
+			accessReport(url, mode='download', docPerLine=docPerLine)
 
 	articleID = int_query('Read a report?', minVal=1, maxVal=len(subset_links)) - 1
 	if articleID <= len(subset_links):
 		accessReport(subset_links[articleID], mode='read')
 
-def accessReport(url, mode, incImages=True):
+def accessReport(url, mode, incImages=True, docPerLine=False):
 	if coreURL not in url:
 		error("Provided url is not from a recognised domain.")
 		sys.exit()
@@ -193,10 +193,14 @@ def accessReport(url, mode, incImages=True):
 	copy = re.sub(r'(\n\n)+', r'\n', copy)
 
 	if mode.lower() == 'download':
-		filename = url.split('/')[-3]+'.txt' #'_'.join(headline.split(' '))+'.txt' #filename = '_'.join(dateline.split(' '))+'_'+'_'.join(headline.split(' '))+'.txt'
+		filename = url.split('/')[-3]+'.txt' if not docPerLine else 'documents.txt' #'_'.join(headline.split(' '))+'.txt' #filename = '_'.join(dateline.split(' '))+'_'+'_'.join(headline.split(' '))+'.txt'
 		print('Downloading {0} to {1}'.format(url, filename))
-		with open(filename,'w') as f:
-			f.write(copy)
+		if docPerLine:
+			with open(filename,'a') as f: # TODO: Allow user specification?
+				f.write(copy.replace('\n',' ').replace('  ',' ')+'\n')
+		else:
+			with open(filename,'w') as f:
+				f.write(copy)
 	elif mode.lower() == 'read':
 		print(copy)
 	else:
@@ -245,6 +249,7 @@ elif args[0] == 'archive':
 		warn('No search term provided.')
 		printHelp(exit=True, which='archive-'+args[1].lower())
 	if verbose: info('Fetching archived reports...')
+	docPerLine = 'docPerLine' in args
 	importBase()
 	getArchive(searchTerm=args[2], recordType=args[1])
 elif args[0] == 'download':
@@ -252,8 +257,9 @@ elif args[0] == 'download':
 		warn('No url provided.')
 	else:
 		if verbose: print('Downloading report...')
+		docPerLine = 'docPerLine' in args
 		importBase()
-		accessReport(url=args[1], mode='download')
+		accessReport(url=args[1], mode='download', docPerLine=docPerLine)
 elif args[0] == 'read':
 	if len(args) == 1:
 		warn('No url provided.')
