@@ -16,7 +16,7 @@ Naturally this package relies on the WHO website's existing layout, if anything 
 ### Via GitHub
 Find the latest release wheel on the [releases tab](https://github.com/mattravenhall/outbreaker/releases/latest).
 
-### Running
+## Running
 Installation will add the *outbreaker* command to your PATH.
 
 ### Run Types
