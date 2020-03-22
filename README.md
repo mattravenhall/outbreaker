@@ -10,6 +10,10 @@ Currently users are able to pull down the five most recent reports, request the 
 Naturally this package relies on the WHO website's existing layout, if anything breaks please highlight it as an issue on the package's [github repo](https://github.com/mattravenhall/outbreaker).
 
 ## Installation
+### Via pip
+`pip install outbreaker`
+
+### Via GitHub
 Find the latest release wheel on the [releases tab](https://github.com/mattravenhall/outbreaker/releases/latest).
 
 ### Running

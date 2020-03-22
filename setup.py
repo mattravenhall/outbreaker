@@ -3,16 +3,20 @@
 # from distutils.core import setup
 from setuptools import setup, find_packages
 
+with open("README.md", 'r') as readme:
+    long_description = readme.read()
+
 setup(
     name='outbreaker',
-    version='1.0',
+    version='1.0.1',
     description='Explore WHO Disease Outbreak News',
-    author='MattR',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    author='Matt Ravenhall',
+    author_email='matt.ravenhall@gmail.com',
     url='https://github.com/mattravenhall/outbreaker',
     package_dir={"outbreaker": "src"},
     packages=['outbreaker'],
-    # include_package_data=True,
-    # exclude_package_data={"": ["README.txt"]},
     classifiers=[
           'Development Status :: 5 - Production/Stable',
           'Environment :: Console',
