@@ -8,7 +8,7 @@ with open("README.md", 'r') as readme:
 
 setup(
     name='outbreaker',
-    version='1.0.3',
+    version='1.0.4',
     description='Explore WHO Disease Outbreak News',
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -35,7 +35,6 @@ setup(
     },
     install_requires=[
         'beautifulsoup4>=4.6.0',
-        'pandas>=0.19.2',
         'requests',
         'lxml'
     ],

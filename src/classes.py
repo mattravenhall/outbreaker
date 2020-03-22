@@ -2,7 +2,6 @@
 
 import argparse
 import datetime
-import pandas as pd
 import re
 import requests
 import sys
@@ -40,12 +39,11 @@ class outbreakerClass(object):
         elif self.args.command == 'download':
             if self.args.verbose:
                 print('Downloading report...')
-            self.accessReport(url=args[1], mode='download', docPerLine=self.args.docPerLine)
+            self.accessReport(url=self.args[1], mode='download', docPerLine=self.args.docPerLine)
         elif self.args.command == 'read':
             if self.args.verbose:
                 print('Opening report...')
-            self.accessReport(url=args[1], mode='read')
-
+            self.accessReport(url=self.args[1], mode='read')
 
     def setup_parser(self):
         parser = argparse.ArgumentParser(description='Outbreaker: An Unofficial WHO Disease Outbreak News API')
@@ -132,7 +130,7 @@ class outbreakerClass(object):
 
     def accessReport(self, url, mode, incImages=True, docPerLine=False):
         if self.coreURL not in url:
-            error("Provided url is not from a recognised domain.")
+            self.error("Provided url is not from a recognised domain.")
             sys.exit(-1)
         article = BeautifulSoup(requests.get(url).content, 'lxml')
         copy = article.find_all('div', id='primary')[0].text #article.find_all('div', id='primary')[0]
@@ -153,7 +151,7 @@ class outbreakerClass(object):
         elif mode.lower() == 'read':
             print(copy)
         else:
-            error("Report mode '{}' not recognised.".format(mode))
+            self.error("Report mode '{}' not recognised.".format(mode))
 
     def yearDict(self, yearURL='https://www.who.int/csr/don/archive/year/en/'):
         if not hasattr(self, 'years'):
@@ -197,7 +195,7 @@ class outbreakerClass(object):
         subset_links = []
         reports = soup.find_all('ul', class_='auto_archive')
         if len(reports) < 1:
-            error("No recent reports found.".format(**locals()))
+            self.error("No recent reports found.".format(**locals()))
             sys.exit()
         print(self.titleFormat.format('Latest Disease Outbreaks (Source: WHO)'))
         index = 0
@@ -239,7 +237,7 @@ class outbreakerClass(object):
                 self.list_archive(which='disease', exit=True)
             else:
                 searchTerm_orig = searchTerm
-                searchTerm = diseases[searchTerm].split('/')[-2]
+                searchTerm = self.diseases[searchTerm].split('/')[-2]
                 if ' ' in searchTerm: searchTerm = '_'.join(searchTerm.lower().split(' '))
         elif recordType.lower() == 'country':
             self.countries = self.countryDict()
@@ -282,10 +280,6 @@ class outbreakerClass(object):
         articleID = int_query('Read a report?', minVal=1, maxVal=len(subset_links)) - 1
         if articleID <= len(subset_links):
             self.accessReport(subset_links[articleID], mode='read')
-
-if __name__ == '__main__':
-    outbreaker = outbreaker()
-
 
 
 # # def alert(checkTime=30):
