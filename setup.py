@@ -8,7 +8,7 @@ with open("README.md", 'r') as readme:
 
 setup(
     name='outbreaker',
-    version='1.0.1',
+    version='1.0.2',
     description='Explore WHO Disease Outbreak News',
     long_description=long_description,
     long_description_content_type="text/markdown",
