@@ -2,6 +2,7 @@
 
 import argparse
 import datetime
+import os
 import re
 import requests
 import sys
@@ -63,12 +64,14 @@ class outbreakerClass(object):
         parser_archive = subparsers.add_parser('archive', help=f"{help_text['archive']}", description=f"{help_text['archive']}")
         parser_archive.add_argument('recordType', choices=['year', 'disease', 'country'], help='Sub-archive to explore.')
         parser_archive.add_argument('searchTerm', nargs='*', help='Term to search for.')
-        parser_archive.add_argument('--docPerLine', action='store_true')
+        parser_archive.add_argument('--docPerLine', action='store_true', help=argparse.SUPPRESS)
+        parser_archive.add_argument('--filename', default='documents.txt', help=argparse.SUPPRESS)
         parser_archive.add_argument('--verbose', action='store_false')
 
         parser_download = subparsers.add_parser('download', help=f"{help_text['download']}", description=f"{help_text['download']}")
         parser_download.add_argument('url', help='URL for a WHO report.')
-        parser_download.add_argument('--docPerLine', action='store_true')
+        parser_download.add_argument('--docPerLine', action='store_true', help=argparse.SUPPRESS)
+        parser_download.add_argument('--filename', default='documents.txt', help=argparse.SUPPRESS)
         parser_download.add_argument('--verbose', action='store_false')
 
         parser_read = subparsers.add_parser('read', help=f"{help_text['read']}", description=f"{help_text['read']}")
@@ -111,47 +114,46 @@ class outbreakerClass(object):
 
     def list_archive(self, which=None, exit=False):
         if which.lower() == 'year':
-            print('Usage: outbreaker.py archive year <year>\n')
+            print('Usage: outbreaker.py archive year <year>')
             print('Available Years:')
-            self.print_columns(sorted(self.yearDict().keys()), columns=1) #columns=5)
+            self.print_columns(sorted(self.yearDict().keys()), columns=1)
         elif which.lower() == 'disease':
-            print('Usage: outbreaker.py archive disease <disease>\n')
+            print('Usage: outbreaker.py archive disease <disease>')
             print('Available Diseases:')
-            self.print_columns(sorted(self.diseaseDict().keys(), key=str.casefold), columns=1) #columns=2, width=70)
+            self.print_columns(sorted(self.diseaseDict().keys(), key=str.casefold), columns=1)
         elif which.lower() == 'country':
-            print('Usage: outbreaker archive country <country>\n')
+            print('Usage: outbreaker archive country <country>')
             print('Available Countries:')
-            self.print_columns(sorted(self.countryDict().keys(), key=str.casefold), columns=1) #columns=3, width=40)
+            self.print_columns(sorted(self.countryDict().keys(), key=str.casefold), columns=1)
         else:
             self.error(f"Help type {which} not recognised.")
             sys.exit()
         if exit:
             sys.exit()
 
-    def accessReport(self, url, mode, incImages=True, docPerLine=False):
+    def accessReport(self, article, mode, incImages=True, docPerLine=False):
+        url = article['url']
         if self.coreURL not in url:
             self.error("Provided url is not from a recognised domain.")
             sys.exit(-1)
-        article = BeautifulSoup(requests.get(url).content, 'lxml')
-        copy = article.find_all('div', id='primary')[0].text #article.find_all('div', id='primary')[0]
-        #headline = copy.find_all('h1',class_='headline')[0].text
-        # dateline = copy.find_all('em',class_='dateline')[0].text.rstrip(' -')
-        #text = [x.text for x in copy.find_all('span')]
-        copy = re.sub(r'(\n\n)+', r'\n', copy)
+        article_text = BeautifulSoup(requests.get(url).content, 'lxml')
+        copy = article_text.find_all('div', id='primary')[0].text
+        copy = re.sub(f"{os.linesep}+", os.linesep, copy)
+        copy = re.sub(r"\s+", r' ', copy)
 
         if mode.lower() == 'download':
-            filename = url.split('/')[-3]+'.txt' if not docPerLine else 'documents.txt' #'_'.join(headline.split(' '))+'.txt' #filename = '_'.join(dateline.split(' '))+'_'+'_'.join(headline.split(' '))+'.txt'
+            filename = url.split('/')[-3]+'.txt' if not docPerLine else self.args.filename
             print('Downloading {0} to {1}'.format(url, filename))
             if docPerLine:
-                with open(filename,'a') as f: # TODO: Allow user specification?
-                    f.write(copy.replace('\n',' ').replace('  ',' ')+'\n')
+                with open(filename,'a') as f:
+                    f.write(f"{article['date']} |{copy.replace(os.linesep,' ').replace('  ',' ')+os.linesep}")
             else:
                 with open(filename,'w') as f:
                     f.write(copy)
         elif mode.lower() == 'read':
             print(copy)
         else:
-            self.error("Report mode '{}' not recognised.".format(mode))
+            self.error(f"Report mode '{mode}' not recognised.")
 
     def yearDict(self, yearURL='https://www.who.int/csr/don/archive/year/en/'):
         if not hasattr(self, 'years'):
@@ -182,9 +184,6 @@ class outbreakerClass(object):
                         if (y.text is not None) and (y.get('href') is not None):
                             countryDict[y.text.upper()] = y.get('href')
 
-            # countryDict = {z.text: z.get('href') for z in [x for y in [d.find_all('a', href=True) for d in soup.find_all('ul', class_='a_z')] for x in y]}
-            # countryDict = {z.text: z.get('href') for z in [x for y in [d.find_all('a', href=True) for d in soup.find_all('ul', class_='a_z') if not isinstance(d, NavigableString)] for x in y]}
-            # countryDict = {z.text: z.get('href') for z in [x for y in [d.find_all('a', href=True) if ((z.text is not None) and (z.get('href') is not None)) for d in soup.find_all('ul', class_='a_z')] for x in y]}
             return(countryDict)
         else:
             return(self.countries)
@@ -192,7 +191,7 @@ class outbreakerClass(object):
     def getLatest(self):
         soup = BeautifulSoup(requests.get(self.latestURL).content, "lxml")
 
-        subset_links = []
+        articles = []
         reports = soup.find_all('ul', class_='auto_archive')
         if len(reports) < 1:
             self.error("No recent reports found.".format(**locals()))
@@ -201,16 +200,19 @@ class outbreakerClass(object):
         index = 0
         for report in reports[0].find_all('li'):
             index += 1
-            subset_links.append(self.coreURL+report.find_all('a',href=True)[0].get('href'))
-            print(self.outformat.format(index, report.span.text, report.a.text, self.coreURL+report.find_all('a',href=True)[0].get('href')))
+            date = report.a.text
+            title = report.span.text
+            url = self.coreURL+report.find_all('a',href=True)[0].get('href')
+            articles.append({'date': date, 'title': title, 'url': url})
+            print(self.outformat.format(index, date, title, url))
 
         if binary_query('Download these reports?'):
-            for url in subset_links:
-                self.accessReport(url, mode='download')
+            for article in articles:
+                self.accessReport(article, mode='download')
 
-        articleID = int_query('Read a report?', minVal=1, maxVal=len(subset_links)) - 1
-        if articleID <= len(subset_links):
-            self.accessReport(subset_links[articleID], mode='read')
+        articleID = int_query('Read a report?', minVal=1, maxVal=len(articles)) - 1
+        if articleID <= len(articles):
+            self.accessReport(articles[articleID], mode='read')
 
     def getArchive(self, searchTerm=None, recordType=None, coreURL=None, language=None):
         if coreURL is None:
@@ -261,7 +263,7 @@ class outbreakerClass(object):
         if recordType == 'country':
             searchTerm = searchTerm_orig
 
-        subset_links = []
+        articles = []
         reports = soup.find_all('ul', class_='auto_archive')
         if len(reports) < 1:
             self.error("No reports found for '{searchTerm_orig}'".format(**locals()))
@@ -270,19 +272,20 @@ class outbreakerClass(object):
         index = 0
         for report in reports[0].find_all('li'):
             index += 1
-            subset_links.append(self.coreURL+report.find_all('a',href=True)[0].get('href'))
-            print(self.outformat.format(index, report.a.text, report.span.text, self.coreURL+report.find_all('a',href=True)[0].get('href')))
+            date = report.a.text
+            title = report.span.text
+            url = self.coreURL+report.find_all('a',href=True)[0].get('href')
+            articles.append({'date': date, 'title': title, 'url': url})
+            print(self.outformat.format(index, date, title, url))
 
-        if binary_query('Download these reports?'):
-            for url in subset_links:
-                self.accessReport(url, mode='download', docPerLine=self.args.docPerLine)
+        if self.args.docPerLine:
+            for article in articles:
+                self.accessReport(article, mode='download', docPerLine=self.args.docPerLine)
+        else:
+            if binary_query('Download these reports?'):
+                for article in articles:
+                    self.accessReport(article, mode='download', docPerLine=self.args.docPerLine)
 
-        articleID = int_query('Read a report?', minVal=1, maxVal=len(subset_links)) - 1
-        if articleID <= len(subset_links):
-            self.accessReport(subset_links[articleID], mode='read')
-
-
-# # def alert(checkTime=30):
-# #     # assuming checkTime is minutes, loop to alert for the latest outbreaks.
-# #     pass
-
+            articleID = int_query('Read a report?', minVal=1, maxVal=len(articles)) - 1
+            if articleID <= len(articles):
+                self.accessReport(articles[articleID], mode='read')
