@@ -21,7 +21,7 @@ class outbreakerClass(object):
     """docstring for outbreaker"""
     def __init__(self):
         self.language = 'en'
-        self.coreURL = 'http://www.who.int'
+        self.coreURL = 'https://www.who.int'
         self.latestURL = f"{self.coreURL}/csr/don/{self.language}/"
         self.outformat = '\033[94m[{0:}] \033[92m[{1}]\033[0m: {2:}: \033[90m{3:}\033[0m' # [Index] [Date]: Title: Link
         self.titleFormat = '\033[1m-{0}-\033[0m'
